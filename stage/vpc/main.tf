@@ -13,7 +13,7 @@ terraform {
 }
 
 resource "aws_vpc" "vpc" {
-    cidr_block = "10.0.0.0/24"
+    cidr_block = "10.0.0.0/16"
     enable_dns_support   = true
     enable_dns_hostnames = true
     tags       = {
@@ -25,9 +25,16 @@ resource "aws_internet_gateway" "internet_gateway" {
     vpc_id = aws_vpc.vpc.id
 }
 
-resource "aws_subnet" "pub_subnet" {
+resource "aws_subnet" "pub_subnet1" {
     vpc_id = aws_vpc.vpc.id
-    cidr_block = "10.0.0.0/22"
+    cidr_block = "10.0.0.0/17"
+    availability_zone = "us-east-2a"
+}
+
+resource "aws_subnet" "pub_subnet2" {
+    vpc_id = aws_vpc.vpc.id
+    cidr_block = "10.0.128.0/17"
+    availability_zone = "us-east-2b"
 }
 
 resource "aws_route_table" "public" {
@@ -39,8 +46,12 @@ resource "aws_route_table" "public" {
     }
 }
 
-resource "aws_route_table_association" "route_table_association" {
-    subnet_id = aws_subnet.pub_subnet.id
+resource "aws_route_table_association" "route_table_association1" {
+    subnet_id = aws_subnet.pub_subnet1.id
+    route_table_id = aws_route_table.public.id
+}
+resource "aws_route_table_association" "route_table_association2" {
+    subnet_id = aws_subnet.pub_subnet2.id
     route_table_id = aws_route_table.public.id
 }
 
@@ -78,8 +89,7 @@ resource "aws_security_group" "rds_sg" {
         to_port         = 5432
         cidr_blocks     = ["0.0.0.0/0"]
         security_groups = [aws_security_group.ecs_sg.id]
-    }
-
+      }
     egress {
         from_port       = 0
         to_port         = 65535
@@ -87,3 +97,8 @@ resource "aws_security_group" "rds_sg" {
         cidr_blocks     = ["0.0.0.0/0"]
     }
 }
+
+resource "aws_db_subnet_group" "db_subnet_group" {
+    subnet_ids  = [aws_subnet.pub_subnet1.id, aws_subnet.pub_subnet2.id]
+}
+
