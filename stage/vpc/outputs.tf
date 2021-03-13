@@ -3,14 +3,9 @@ output "ecs_sg_id" {
   description = "The id for the ecs security group."
 }
 
-output "pub_subnet_id1" {
-  value = aws_subnet.pub_subnet1.id
-  description = "the id of the first public subnet used for ecs."
-}
-
-output "pub_subnet_id2" {
-  value = aws_subnet.pub_subnet2.id
-  description = "the id of the second public subnet used for ecs."
+output "pub_subnet_ids" {
+  value = toset([aws_subnet.pub_subnet1.id, aws_subnet.pub_subnet2.id])
+  description = "the ids of the public subnets used for ecs."
 }
 
 output "db_subnet_group_id" {

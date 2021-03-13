@@ -56,7 +56,7 @@ data "template_file" "task_definition_template" {
 }
 
 resource "aws_launch_configuration" "ecs_launch_config" {
-  image_id             = "ami-094d4d00fd7462815"
+  image_id             = "ami-0c55b159cbfafe1f0"
   iam_instance_profile = data.terraform_remote_state.iams.outputs.ecs_agent_name
   security_groups      = [data.terraform_remote_state.vpc.outputs.ecs_sg_id]
   user_data            = "#!/bin/bash\necho ECS_CLUSTER=${aws_ecs_cluster.ecs_cluster.name} >> /etc/ecs/ecs.config"
@@ -65,7 +65,7 @@ resource "aws_launch_configuration" "ecs_launch_config" {
 
 resource "aws_autoscaling_group" "failure_analysis_ecs_asg" {
   name                      = "asg"
-  vpc_zone_identifier       = [data.terraform_remote_state.vpc.outputs.pub_subnet_id1, data.terraform_remote_state.vpc.outputs.pub_subnet_id2]
+  vpc_zone_identifier       = data.terraform_remote_state.vpc.outputs.pub_subnet_ids
   launch_configuration      = aws_launch_configuration.ecs_launch_config.name
   desired_capacity          = 2
   min_size                  = 1
