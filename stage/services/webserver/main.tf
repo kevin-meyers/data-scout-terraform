@@ -81,6 +81,11 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 resource "aws_ecs_task_definition" "task_definition" {
   family                = "datascout"
   container_definitions = data.template_file.task_definition_template.rendered
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu = 256
+  memory = 512
+  execution_role_arn = data.terraform_remote_state.iams.outputs.ecs_task_execution_role_arn
 }
 
 resource "aws_ecs_service" "datascout" {
@@ -88,4 +93,52 @@ resource "aws_ecs_service" "datascout" {
   cluster         = aws_ecs_cluster.ecs_cluster.id
   task_definition = aws_ecs_task_definition.task_definition.arn
   desired_count   = 2
+  launch_type = "FARGATE"
+
+  network_configuration {
+    assign_public_ip = true
+    subnets = data.terraform_remote_state.vpc.outputs.pub_subnet_ids
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.target_group.arn
+    container_name   = aws_ecs_task_definition.task_definition.family
+    container_port   = 3000
+  }
+}
+
+resource "aws_alb" "application_load_balancer" {
+  name = "datascout-lb"
+  load_balancer_type = "application"
+  subnets = data.terraform_remote_state.vpc.outputs.pub_subnet_ids
+  security_groups = [data.terraform_remote_state.vpc.outputs.lb_sg_id]
+}
+
+
+resource "aws_lb_target_group" "target_group" {
+  name        = "datascout-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
+  target_type = "ip"
+  health_check {
+    matcher = "200,301,302"
+    path = "/"
+  }
+  depends_on = [aws_alb.application_load_balancer]
+}
+
+resource "aws_lb_listener" "listener" {
+  load_balancer_arn = aws_alb.application_load_balancer.arn
+  port              = "80"
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+// This should get extracted into its own devops folder
+resource "aws_cloudwatch_log_group" "datascout" {
+  name = "awslogs-datascout-staging"
 }

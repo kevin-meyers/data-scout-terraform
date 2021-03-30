@@ -45,5 +45,6 @@ resource "aws_db_instance" "postgresql" {
   db_subnet_group_name = data.terraform_remote_state.vpc.outputs.db_subnet_group_id
   skip_final_snapshot = true
   final_snapshot_identifier = "datascout-final"
+  vpc_security_group_ids = [data.terraform_remote_state.vpc.outputs.rds_sg_id]
 }
 
